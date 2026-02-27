@@ -13,8 +13,36 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/andranikasd/picoclaw/pkg/config"
 )
+
+const maxShellOutputBytes = 512 * 1024 // 512 KB hard cap per stream
+
+// limitedWriter caps how many bytes are written to an underlying buffer.
+// Bytes beyond the limit are silently discarded; the writer always reports
+// success so the child process does not receive a broken-pipe error.
+type limitedWriter struct {
+	buf     bytes.Buffer
+	limit   int
+	dropped int
+}
+
+func (lw *limitedWriter) Write(p []byte) (int, error) {
+	if lw.buf.Len() < lw.limit {
+		space := lw.limit - lw.buf.Len()
+		if len(p) <= space {
+			lw.buf.Write(p)
+		} else {
+			lw.buf.Write(p[:space])
+			lw.dropped += len(p) - space
+		}
+	} else {
+		lw.dropped += len(p)
+	}
+	return len(p), nil
+}
+
+func (lw *limitedWriter) String() string { return lw.buf.String() }
 
 type ExecTool struct {
 	workingDir          string
@@ -186,9 +214,10 @@ func (t *ExecTool) Execute(ctx context.Context, args map[string]any) *ToolResult
 
 	prepareCommandForTermination(cmd)
 
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	stdout := &limitedWriter{limit: maxShellOutputBytes}
+	stderr := &limitedWriter{limit: maxShellOutputBytes}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 
 	if err := cmd.Start(); err != nil {
 		return ErrorResult(fmt.Sprintf("failed to start command: %v", err))
@@ -215,8 +244,12 @@ func (t *ExecTool) Execute(ctx context.Context, args map[string]any) *ToolResult
 	}
 
 	output := stdout.String()
-	if stderr.Len() > 0 {
+	if stderr.buf.Len() > 0 {
 		output += "\nSTDERR:\n" + stderr.String()
+	}
+
+	if stdout.dropped > 0 || stderr.dropped > 0 {
+		output += fmt.Sprintf("\n... (output truncated: %d bytes dropped)", stdout.dropped+stderr.dropped)
 	}
 
 	if err != nil {
@@ -235,6 +268,7 @@ func (t *ExecTool) Execute(ctx context.Context, args map[string]any) *ToolResult
 		output = "(no output)"
 	}
 
+	// Secondary safety-net: cap the final combined string sent to the LLM.
 	maxLen := 10000
 	if len(output) > maxLen {
 		output = output[:maxLen] + fmt.Sprintf("\n... (truncated, %d more chars)", len(output)-maxLen)

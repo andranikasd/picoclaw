@@ -17,18 +17,18 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/channels"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/constants"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/media"
-	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/routing"
-	"github.com/sipeed/picoclaw/pkg/skills"
-	"github.com/sipeed/picoclaw/pkg/state"
-	"github.com/sipeed/picoclaw/pkg/tools"
-	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/andranikasd/picoclaw/pkg/bus"
+	"github.com/andranikasd/picoclaw/pkg/channels"
+	"github.com/andranikasd/picoclaw/pkg/config"
+	"github.com/andranikasd/picoclaw/pkg/constants"
+	"github.com/andranikasd/picoclaw/pkg/logger"
+	"github.com/andranikasd/picoclaw/pkg/media"
+	"github.com/andranikasd/picoclaw/pkg/providers"
+	"github.com/andranikasd/picoclaw/pkg/routing"
+	"github.com/andranikasd/picoclaw/pkg/skills"
+	"github.com/andranikasd/picoclaw/pkg/state"
+	"github.com/andranikasd/picoclaw/pkg/tools"
+	"github.com/andranikasd/picoclaw/pkg/utils"
 )
 
 type AgentLoop struct {
@@ -53,6 +53,7 @@ type processOptions struct {
 	EnableSummary   bool   // Whether to trigger summarization
 	SendResponse    bool   // Whether to send response via bus
 	NoHistory       bool   // If true, don't load session history (for heartbeat)
+	MediaScope      string // Media scope to release after LLM iteration completes
 }
 
 const defaultResponse = "I've completed processing but have no response to give. Increase `max_tool_iterations` in config.json."
@@ -173,19 +174,6 @@ func (al *AgentLoop) Run(ctx context.Context) error {
 
 			// Process message
 			func() {
-				// TODO: Re-enable media cleanup after inbound media is properly consumed by the agent.
-				// Currently disabled because files are deleted before the LLM can access their content.
-				// defer func() {
-				// 	if al.mediaStore != nil && msg.MediaScope != "" {
-				// 		if releaseErr := al.mediaStore.ReleaseAll(msg.MediaScope); releaseErr != nil {
-				// 			logger.WarnCF("agent", "Failed to release media", map[string]any{
-				// 				"scope": msg.MediaScope,
-				// 				"error": releaseErr.Error(),
-				// 			})
-				// 		}
-				// 	}
-				// }()
-
 				response, err := al.processMessage(ctx, msg)
 				if err != nil {
 					response = fmt.Sprintf("Error processing message: %v", err)
@@ -411,6 +399,7 @@ func (al *AgentLoop) processMessage(ctx context.Context, msg bus.InboundMessage)
 		DefaultResponse: defaultResponse,
 		EnableSummary:   true,
 		SendResponse:    false,
+		MediaScope:      msg.MediaScope,
 	})
 }
 
@@ -509,6 +498,19 @@ func (al *AgentLoop) runAgentLoop(ctx context.Context, agent *AgentInstance, opt
 	agent.Sessions.AddMessage(opts.SessionKey, "user", opts.UserMessage)
 
 	// 4. Run LLM iteration loop
+	// Release inbound media files after the LLM iteration completes (all tool calls done).
+	// Placed here so the LLM and its tools have full access during iteration, while
+	// async subagents only receive text descriptions rather than raw file paths.
+	if al.mediaStore != nil && opts.MediaScope != "" {
+		defer func() {
+			if releaseErr := al.mediaStore.ReleaseAll(opts.MediaScope); releaseErr != nil {
+				logger.WarnCF("agent", "Failed to release media", map[string]any{
+					"scope": opts.MediaScope,
+					"error": releaseErr.Error(),
+				})
+			}
+		}()
+	}
 	finalContent, iteration, err := al.runLLMIteration(ctx, agent, messages, opts)
 	if err != nil {
 		return "", err

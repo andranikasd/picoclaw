@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/skills"
-	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal"
+	"github.com/andranikasd/picoclaw/pkg/config"
+	"github.com/andranikasd/picoclaw/pkg/skills"
+	"github.com/andranikasd/picoclaw/pkg/utils"
 )
 
 func skillsListCmd(loader *skills.SkillsLoader) {

@@ -12,16 +12,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal"
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/agent"
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/auth"
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/cron"
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/gateway"
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/migrate"
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/onboard"
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/skills"
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/status"
-	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/version"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal/agent"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal/auth"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal/cron"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal/gateway"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal/migrate"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal/onboard"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal/skills"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal/status"
+	"github.com/andranikasd/picoclaw/cmd/picoclaw/internal/version"
 )
 
 func NewPicoclawCommand() *cobra.Command {

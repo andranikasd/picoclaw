@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/andranikasd/picoclaw/pkg/config"
 )
 
 func TestCamelToSnake(t *testing.T) {

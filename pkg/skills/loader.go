@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sipeed/picoclaw/pkg/logger"
+	"github.com/andranikasd/picoclaw/pkg/logger"
 )
 
 var (

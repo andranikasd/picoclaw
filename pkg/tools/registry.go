@@ -7,19 +7,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/andranikasd/picoclaw/pkg/logger"
+	"github.com/andranikasd/picoclaw/pkg/providers"
 )
 
 type ToolRegistry struct {
-	tools map[string]Tool
-	mu    sync.RWMutex
+	tools       map[string]Tool
+	mu          sync.RWMutex
+	toolTimeout time.Duration // per-tool deadline (0 = no extra timeout)
 }
 
 func NewToolRegistry() *ToolRegistry {
 	return &ToolRegistry{
 		tools: make(map[string]Tool),
 	}
+}
+
+// SetToolTimeout sets a per-tool execution deadline applied to every tool call.
+// A value of 0 disables the extra timeout (tools with their own internal timeout,
+// like ExecTool, are unaffected by this setting since they manage their own context).
+func (r *ToolRegistry) SetToolTimeout(d time.Duration) {
+	r.toolTimeout = d
 }
 
 func (r *ToolRegistry) Register(tool Tool) {
@@ -78,8 +86,15 @@ func (r *ToolRegistry) ExecuteWithContext(
 			})
 	}
 
+	execCtx := ctx
+	if r.toolTimeout > 0 {
+		var cancel context.CancelFunc
+		execCtx, cancel = context.WithTimeout(ctx, r.toolTimeout)
+		defer cancel()
+	}
+
 	start := time.Now()
-	result := tool.Execute(ctx, args)
+	result := tool.Execute(execCtx, args)
 	duration := time.Since(start)
 
 	// Log based on result type

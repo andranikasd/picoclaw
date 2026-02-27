@@ -4,12 +4,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/routing"
-	"github.com/sipeed/picoclaw/pkg/session"
-	"github.com/sipeed/picoclaw/pkg/tools"
+	"github.com/andranikasd/picoclaw/pkg/config"
+	"github.com/andranikasd/picoclaw/pkg/providers"
+	"github.com/andranikasd/picoclaw/pkg/routing"
+	"github.com/andranikasd/picoclaw/pkg/session"
+	"github.com/andranikasd/picoclaw/pkg/tools"
 )
 
 // AgentInstance represents a fully configured agent with its own workspace,
@@ -48,6 +49,9 @@ func NewAgentInstance(
 
 	restrict := defaults.RestrictToWorkspace
 	toolsRegistry := tools.NewToolRegistry()
+	if defaults.ToolTimeoutSeconds > 0 {
+		toolsRegistry.SetToolTimeout(time.Duration(defaults.ToolTimeoutSeconds) * time.Second)
+	}
 	toolsRegistry.Register(tools.NewReadFileTool(workspace, restrict))
 	toolsRegistry.Register(tools.NewWriteFileTool(workspace, restrict))
 	toolsRegistry.Register(tools.NewListDirTool(workspace, restrict))
